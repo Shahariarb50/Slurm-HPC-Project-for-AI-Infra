@@ -243,7 +243,7 @@ EOF
 sudo tee /etc/slurm-web/policy.ini > /dev/null <<'EOF'
 [roles]
 user=ALL
-admin=@sysadmins
+admin=@slurm-superadmins
 
 [user]
 actions=stats-view,jobs-view,jobs-view-past,nodes-view,partitions-view,qos-view,accounts-view,associations-view,reservations-view
@@ -349,10 +349,20 @@ objectClass: posixGroup
 cn: researchers
 gidNumber: 5002
 
-dn: cn=sysadmins,ou=group,$LDAP_BASE_DN
+dn: cn=slurm-users,ou=group,$LDAP_BASE_DN
 objectClass: posixGroup
-cn: sysadmins
-gidNumber: 5003
+cn: slurm-users
+gidNumber: 21000
+
+dn: cn=slurm-admins,ou=group,$LDAP_BASE_DN
+objectClass: posixGroup
+cn: slurm-admins
+gidNumber: 21001
+
+dn: cn=slurm-superadmins,ou=group,$LDAP_BASE_DN
+objectClass: posixGroup
+cn: slurm-superadmins
+gidNumber: 21002
 EOF
 
 sudo ldapadd -x -D "cn=admin,$LDAP_BASE_DN" -w "$LDAP_PASS" -f /tmp/base.ldif 2>/dev/null || print_warning "Base OU/Groups already exist"
@@ -380,7 +390,7 @@ sudo ldapadd -x -D "cn=admin,$LDAP_BASE_DN" -w "$LDAP_PASS" -f /tmp/default_user
 sudo ldappasswd -x -D "cn=admin,$LDAP_BASE_DN" -w "$LDAP_PASS" -s "$DEFAULT_USER_PASS" "uid=$DEFAULT_USER,ou=people,$LDAP_BASE_DN" 2>/dev/null || print_warning "Password already set"
 
 cat <<EOF > /tmp/add_default.ldif
-dn: cn=engineers,ou=group,$LDAP_BASE_DN
+dn: cn=slurm-users,ou=group,$LDAP_BASE_DN
 changetype: modify
 add: memberUid
 memberUid: $DEFAULT_USER
@@ -410,7 +420,7 @@ sudo ldapadd -x -D "cn=admin,$LDAP_BASE_DN" -w "$LDAP_PASS" -f /tmp/admin_user.l
 sudo ldappasswd -x -D "cn=admin,$LDAP_BASE_DN" -w "$LDAP_PASS" -s "$SLURM_ADMIN_PASS" "uid=$SLURM_ADMIN,ou=people,$LDAP_BASE_DN" 2>/dev/null || print_warning "Password already set"
 
 cat <<EOF > /tmp/add_admin.ldif
-dn: cn=sysadmins,ou=group,$LDAP_BASE_DN
+dn: cn=slurm-superadmins,ou=group,$LDAP_BASE_DN
 changetype: modify
 add: memberUid
 memberUid: $SLURM_ADMIN
