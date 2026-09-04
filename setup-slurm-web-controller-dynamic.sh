@@ -547,9 +547,11 @@ sudo sacctmgr -i add cluster "$CLUSTER_NAME" || true
 sudo sacctmgr -i add account default Description="Default Slurm Account" Organization="$LDAP_ORG" || true
 sudo sacctmgr -i add user "$SLURM_ADMIN" account=default || true
 sudo sacctmgr -i modify user where name="$SLURM_ADMIN" set AdminLevel=Admin DefaultAccount=default
-sudo sacctmgr -i add qos normal Description="Standard jobs" Priority=100 || true
+sudo sacctmgr -i add qos normal Description="Normal user jobs: 2 CPU, 1G RAM, 2h, one job" Priority=100 || true
+sudo sacctmgr -i modify qos normal set MaxTRESPerUser=cpu=2,mem=1G MaxWall=02:00:00 MaxJobsPerUser=1
 sudo sacctmgr -i add qos high Description="High-priority jobs" Priority=500 || true
-sudo sacctmgr -i modify user where name="$SLURM_ADMIN" account=default set QOS+=normal,high DefaultQOS=normal
+sudo sacctmgr -i add qos superadmin Description="Unrestricted Super Admin jobs" Priority=1000 || true
+sudo sacctmgr -i modify user where name="$SLURM_ADMIN" account=default set QOS+=normal,high,superadmin DefaultQOS=superadmin
 sudo systemctl restart slurmctld slurmd slurmrestd slurm-web-agent slurm-web-gateway
 sleep 2
 sudo scontrol create reservation ReservationName=training-reservation StartTime=now+1day Duration=01:00:00 Users="$SLURM_ADMIN" Nodes="$HOST_NAME" 2>/dev/null || print_warning "Reservation already exists or could not be created"

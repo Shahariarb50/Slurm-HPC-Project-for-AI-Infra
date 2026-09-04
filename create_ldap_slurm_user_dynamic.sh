@@ -115,6 +115,9 @@ sacctmgr -n show account "$username" format=Account | grep -qx "$username" || sa
 sacctmgr -n show user "$username" format=User | grep -qx "$username" || sacctmgr -i add user "$username" Account="$username" Cluster="$cluster" DefaultAccount="$username" DefaultQOS="$qos"
 sacctmgr -i modify user where name="$username" set DefaultAccount="$username" DefaultQOS="$qos"
 sacctmgr -i modify user where name="$username" account="$username" set QOS="$qos"
+# Explicit partition association is required when AccountingStorageEnforce=associations.
+sacctmgr -i add user "$username" Account="$username" Cluster="$cluster" Partition="$partition" || true
+sacctmgr -i modify user where name="$username" account="$username" partition="$partition" set QOS="$qos"
 
 echo
 echo '[OK] User created.'

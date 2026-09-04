@@ -1,97 +1,100 @@
-# Slurm Lab Guide
+# Slurm Cluster Lab Guide
 
-## Lab nodes
+This document describes a reusable Slurm cluster setup with a controller, login node, GPU worker, LDAP users, NFS shared homes, Slurm Web, QoS limits, roles, and job management.
 
-| Node | IP | Role |
-|---|---:|---|
-| Controller | `192.168.43.44` | Slurm, LDAP, NFS, database, Slurm Web |
-| Login | `192.168.43.45` | SSH login and job submission |
-| Worker | `192.168.182.253` | Job execution and RTX 3060 GPU |
+It intentionally contains no real IP addresses, usernames, passwords, or private keys. Replace every placeholder enclosed by angle brackets before use.
 
-Different IP subnets work because routing is enabled. NFS exports allow the login and worker client IPs.
+## Architecture
 
-## Service connection
+| Component | Role |
+|---|---|
+| Controller | Runs Slurm controller, accounting database, LDAP, NFS, and optionally Slurm Web |
+| Login node | Accepts normal-user SSH login and submits Slurm jobs |
+| Worker node | Runs allocated jobs and exposes CPU, RAM, and optional GPU resources |
+| LDAP | Central user/group identity store |
+| NFS | Shared user homes mounted at `/shared/home` |
 
 ```text
-User -> Login node -> Controller -> Worker
-          |             |           |
-          +--------- NFS /shared/home
+User -> Login node -> Slurm controller -> Worker node
+          |               |              |
+          +--------- NFS shared home ----+
 
-LDAP: controller -> login and worker through SSSD
-MUNGE: identical /etc/munge/munge.key on every Slurm node
+LDAP: controller -> login node and worker via SSSD
+MUNGE: same authentication key on controller, login, and workers
 ```
 
-## Scripts in D:\\SH
+The login and worker nodes may be on different routed subnets. NFS exports must explicitly allow every client IP or permitted client subnet.
 
-| Script | Run on | Use |
+## Scripts
+
+| Script | Run on | Purpose |
 |---|---|---|
-| `setup-slurm-web-controller-dynamic.sh` | Controller | Full fresh controller installation |
-| `setup_shared_home_controller_dynamic.sh` | Controller | NFS server/export |
-| `setup-login-node-dynamic.sh` | Login | Slurm client, MUNGE, basic LDAP |
-| `setup_ldap_identity_client_dynamic.sh` | Login and worker | LDAP/SSSD identity lookup |
-| `setup_shared_home_login_dynamic.sh` | Login | NFS client mount |
-| `setup-worker-node-gpu-dynamic.sh` | Worker | Slurmd and GPU setup |
-| `setup_shared_home_worker_dynamic.sh` | Worker | NFS client mount |
-| `create_ldap_slurm_user_dynamic.sh` | Controller | New user, home, Slurm account/QoS |
-| `submit_slurm_job_dynamic.sh` | Login as user | Create and submit job |
-| `manage_ldap_slurm_users_groups_dynamic.sh` | Controller | Edit/delete users and manage LDAP groups |
+| `setup-slurm-web-controller-dynamic.sh` | Controller | Fresh controller installation: Slurm, database, LDAP, and Web UI |
+| `setup_shared_home_controller_dynamic.sh` | Controller | Creates the NFS server and exports `/shared/home` |
+| `setup-login-node-dynamic.sh` | Login node | Installs Slurm client, MUNGE, and initial LDAP login setup |
+| `setup_ldap_identity_client_dynamic.sh` | Login and worker | Configures LDAP/SSSD identity resolution |
+| `setup_shared_home_login_dynamic.sh` | Login node | Mounts the NFS shared home persistently |
+| `setup-worker-node-gpu-dynamic.sh` | Worker | Configures Slurmd and NVIDIA GPU auto-detection |
+| `setup_shared_home_worker_dynamic.sh` | Worker | Mounts the NFS shared home persistently |
+| `create_ldap_slurm_user_dynamic.sh` | Controller | Creates LDAP user, Slurm account, QoS association, and private home |
+| `manage_ldap_slurm_users_groups_dynamic.sh` | Controller | Edits/deletes users and manages LDAP groups |
+| `submit_slurm_job_dynamic.sh` | Login node, as user | Generates and submits a Slurm batch job |
+| `slurm_superadmin_menu.sh` | Controller | Interactive job-cancel, reservation, and QoS menu |
 
-After copying a script from Windows to Linux:
+## Before running scripts copied from Windows
+
+Shell scripts must use Linux LF line endings. On the Linux VM, run:
 
 ```bash
-sed -i 's/\r$//' script.sh
-chmod +x script.sh
+sed -i 's/\r$//' <script>.sh
+chmod +x <script>.sh
 ```
 
-## Fresh setup order
+This prevents the `bash\r: No such file or directory` error.
 
-### Controller
+## Installation order
 
-Run the full controller script only on a new controller VM:
+### 1. Build the controller
+
+Run the full controller script only on a new or intentionally rebuilt controller:
 
 ```bash
 sudo bash setup-slurm-web-controller-dynamic.sh
 ```
 
-Use these values:
+During setup, define a cluster name, LDAP domain, LDAP organization, partition name, database credentials, and administrator credentials.
 
-```text
-Cluster: labcluster
-LDAP domain: slurm.local
-Base DN: dc=slurm,dc=local
-Partition: cluster
+After completion, check essential services:
+
+```bash
+sudo systemctl is-active munge mariadb slapd slurmdbd slurmctld slurmrestd slurm-web-agent slurm-web-gateway
+sinfo
 ```
 
-Then run NFS server setup:
+### 2. Configure NFS shared home on controller
 
 ```bash
 sudo bash setup_shared_home_controller_dynamic.sh
 ```
 
-Use:
-
-```text
-Shared path: /shared/home
-Clients: 192.168.43.45,192.168.182.253
-```
-
-Or permit whole routed subnets:
-
-```text
-192.168.43.0/24,192.168.182.0/24
-```
-
-Verify:
+Use `/shared/home` as the shared path. Permit either exact client IPs or routed CIDR networks.
 
 ```bash
 sudo exportfs -v
 systemctl is-active nfs-server
-sinfo
 ```
 
-### Login node
+The parent directories must be traversable by users:
 
-Run in this order:
+```bash
+sudo chmod 755 /shared /shared/home
+```
+
+Personal home directories remain private with `700` permissions.
+
+### 3. Configure login node
+
+Run:
 
 ```bash
 sudo bash setup-login-node-dynamic.sh
@@ -99,26 +102,20 @@ sudo bash setup_ldap_identity_client_dynamic.sh
 sudo bash setup_shared_home_login_dynamic.sh
 ```
 
-Use controller/LDAP/NFS IP `192.168.43.44`, cluster `labcluster`, LDAP domain `slurm.local`, and shared path `/shared/home`.
+Use the controller hostname/IP for Slurm, LDAP, and NFS prompts. The login node needs the same MUNGE key as controller and worker.
 
 Verify:
 
 ```bash
-getent passwd master
+getent passwd <ldap-user>
 findmnt /shared/home
 sinfo
 systemctl is-active munge sssd
 ```
 
-### GPU worker
+### 4. Configure worker node
 
-First copy the MUNGE key. On controller:
-
-```bash
-sudo scp /etc/munge/munge.key worker1@192.168.182.253:/tmp/munge.key
-```
-
-On worker:
+Copy the controller MUNGE key securely to the worker before starting Slurmd:
 
 ```bash
 sudo install -o munge -g munge -m 400 /tmp/munge.key /etc/munge/munge.key
@@ -126,7 +123,7 @@ sudo rm /tmp/munge.key
 sudo systemctl restart munge
 ```
 
-Run:
+Then run:
 
 ```bash
 sudo bash setup-worker-node-gpu-dynamic.sh
@@ -134,112 +131,40 @@ sudo bash setup_ldap_identity_client_dynamic.sh
 sudo bash setup_shared_home_worker_dynamic.sh
 ```
 
-Worker values:
-
-```text
-Controller: 192.168.43.44
-Cluster: labcluster
-Worker name: worker1
-Worker IP: 192.168.182.253
-```
-
-Copy the exact GPU node line printed by the worker script into controller `/etc/slurm/slurm.conf`. Controller config must have:
-
-```ini
-GresTypes=gpu
-```
-
-Then:
+The GPU worker script prints an exact `NodeName=... Gres=...` line. Add that exact detected line to the controller `/etc/slurm/slurm.conf`, ensure `GresTypes=gpu` is present, then run:
 
 ```bash
 sudo scontrol reconfigure
-sudo scontrol update NodeName=worker1 State=IDLE
+sudo scontrol update NodeName=<worker-name> State=IDLE
 sinfo -N -o '%N %T %G'
 ```
 
-Expected GPU: `gpu:nvidia_geforce_rtx_3060:1`.
+For NVIDIA GPUs, the worker needs the NVML Slurm plugin and this GRES configuration:
 
-## LDAP, NFS, and roles
-
-```text
-LDAP domain: slurm.local
-LDAP admin DN: cn=admin,dc=slurm,dc=local
-Shared home: /shared/home
+```ini
+# /etc/slurm/gres.conf
+AutoDetect=nvml
 ```
 
-`/shared` and `/shared/home` must be `755`. Each user home is private `700`.
-
-| Role | LDAP group | Current member |
-|---|---|---|
-| User | `slurm-users` | `it14` |
-| Admin | `slurm-admins` | none |
-| Super Admin | `slurm-superadmins` | `master` |
-
-`master` also has Slurm `AdminLevel=Admin`.
-
-## Create an LDAP and Slurm user
-
-On controller:
+Verify GPU discovery:
 
 ```bash
-sudo bash create_ldap_slurm_user_dynamic.sh
+nvidia-smi -L
+slurmd -G
 ```
 
-Example:
+## LDAP and shared-home requirements
 
-```text
-Username: it14
-Full name: Md. Shahariar Rahaman
-LDAP domain: slurm.local
-LDAP admin DN: cn=admin,dc=slurm,dc=local
-Cluster: labcluster
-Partition: cluster
-QoS: normal
-Shared home root: /shared/home
-```
-
-The script creates LDAP identity, private NFS home, Slurm account/QoS association, and `slurm-users` membership.
-
-Verify:
+Every node that runs a job or accepts LDAP users must resolve identities through SSSD. If a user works on login node but fails on worker, configure or restart SSSD on worker:
 
 ```bash
-getent passwd it14
-id it14
-sudo sacctmgr show user it14 format=User,DefaultAccount,AdminLevel,DefaultQOS
+sudo systemctl restart sssd
+getent passwd <ldap-user>
 ```
 
-## Edit/delete users and manage groups
+All job users need the same UID/GID mapping on controller, login node, and worker. LDAP provides this consistency.
 
-Run this only on the controller:
-
-```bash
-sudo bash manage_ldap_slurm_users_groups_dynamic.sh
-```
-
-It provides this menu:
-
-```text
-1) Edit user: full name, password, QoS, or role
-2) Delete user: archive home, then remove LDAP/Slurm access
-3) Create custom LDAP group
-4) Delete custom LDAP group
-5) Add/remove a user from an LDAP group
-6) List users and groups
-```
-
-For a user deletion, the confirmation must be exactly `DELETE-USERNAME`. The script preserves data by moving `/shared/home/USERNAME` to `/shared/home-archive/USERNAME-TIMESTAMP`; it does not permanently erase home files.
-
-Do not delete the reserved role groups: `slurm-users`, `slurm-admins`, and `slurm-superadmins`. Use the edit-user role option to move a user between these roles. Assigning `superadmin` also sets Slurm `AdminLevel=Admin`; assigning `admin` sets `AdminLevel=Operator`; assigning `user` removes Slurm administration.
-
-## Login and test shared home
-
-From PC:
-
-```bash
-ssh USERNAME@192.168.43.45
-```
-
-Then:
+Shared-home verification as a normal user:
 
 ```bash
 pwd
@@ -249,103 +174,216 @@ rm ~/shared-home-test.txt
 findmnt /shared/home
 ```
 
-Expected home: `/shared/home/USERNAME`.
+Expected home path:
 
-Expected NFS source: `192.168.43.44:/shared/home`.
+```text
+/shared/home/<username>
+```
 
-## Submit a job from login node
+## Roles
 
-As the LDAP user:
+Use LDAP groups with names that do not conflict with operating-system groups:
+
+| Role | LDAP group | Intended access |
+|---|---|---|
+| User | `slurm-users` | SSH to login node and normal job submission |
+| Admin | `slurm-admins` | Delegated operational access |
+| Super Admin | `slurm-superadmins` | Slurm administration and Slurm Web administrator role |
+
+The Super Admin also needs Slurm `AdminLevel=Admin`. An LDAP group alone does not grant Slurm controller privileges.
+
+Do not let normal LDAP users SSH directly to worker nodes. They should edit code and submit jobs from the login node; Slurm alone should allocate worker CPU, RAM, and GPU resources.
+
+## Create users
+
+On controller:
+
+```bash
+sudo bash create_ldap_slurm_user_dynamic.sh
+```
+
+The script creates:
+
+1. LDAP user identity;
+2. private `/shared/home/<username>` directory;
+3. Slurm account and user association;
+4. selected partition association and QoS;
+5. `slurm-users` role membership.
+
+Verify:
+
+```bash
+getent passwd <username>
+id <username>
+sudo sacctmgr show user <username> format=User,DefaultAccount,AdminLevel,DefaultQOS
+```
+
+## Edit, delete, and group management
+
+On controller:
+
+```bash
+sudo bash manage_ldap_slurm_users_groups_dynamic.sh
+```
+
+The menu supports:
+
+```text
+1. Edit user full name, password, QoS, or role
+2. Delete user safely
+3. Create custom LDAP group
+4. Delete custom LDAP group
+5. Add or remove group membership
+6. List users and groups
+```
+
+User deletion requires exact confirmation and performs all of the following:
+
+- removes LDAP user and personal LDAP group;
+- removes role-group membership;
+- removes Slurm user association and dedicated Slurm account;
+- moves the home directory to `/shared/home-archive/` instead of erasing it;
+- verifies no LDAP or Slurm record remains.
+
+Before recreating a deleted username, clear old identity caches on controller, login, and worker:
+
+```bash
+sudo systemctl restart sssd
+```
+
+## QoS resource control
+
+Normal users should never receive unlimited resources. Configure a normal QoS with a defined CPU, RAM, runtime, and concurrency limit. Example:
+
+```bash
+sudo sacctmgr -i modify qos normal set \
+  MaxTRESPerUser=cpu=2,mem=1G \
+  MaxWall=02:00:00 \
+  MaxJobsPerUser=1
+```
+
+Create a separate unrestricted QoS for Super Admins and set it as their default QoS. Check policy:
+
+```bash
+sudo sacctmgr show qos format=Name,Priority,MaxWall,MaxTRESPerUser,MaxJobsPU
+```
+
+GPU count is naturally limited by the physical GPU resources registered on each worker. Do not create fake GPU slices.
+
+## User job submission
+
+Normal users SSH only to login node:
+
+```bash
+ssh <username>@<login-node>
+```
+
+Then submit a job:
 
 ```bash
 chmod +x submit_slurm_job_dynamic.sh
 ./submit_slurm_job_dynamic.sh
 ```
 
-For requested resources enter:
+Or submit a known batch file directly:
 
-```text
-Job name: it14-gpu-test
-Partition: cluster
-Slurm account: it14
-CPU cores: 2
-RAM: 4G
-Number of GPUs: 1
-Maximum run time: 01:00:00
-Reservation: blank unless created
-Start time: blank to run now
-Command: nvidia-smi
+```bash
+sbatch ~/my-job.sbatch
 ```
 
-Check job:
+Example batch file:
+
+```bash
+#!/usr/bin/env bash
+#SBATCH --job-name=gpu-test
+#SBATCH --partition=<partition>
+#SBATCH --account=<username>
+#SBATCH --cpus-per-task=2
+#SBATCH --mem=1G
+#SBATCH --gres=gpu:1
+#SBATCH --time=02:00:00
+#SBATCH --output=%x-%j.out
+#SBATCH --error=%x-%j.err
+
+nvidia-smi
+python train.py
+```
+
+`python train.py` is the real workload command. `sleep` is useful only for testing a running job or demonstrating Web UI visibility.
+
+Monitor jobs:
 
 ```bash
 squeue -u "$USER"
-squeue -j JOB_ID
-scontrol show job JOB_ID
+scontrol show job <job-id>
+sacct -j <job-id> --format=JobID,JobName,State,Elapsed,AllocCPUS,ReqMem,AllocTRES
 ```
 
-Cancel:
+Cancel own job:
 
 ```bash
-scancel JOB_ID
+scancel <job-id>
 ```
 
-## One-hour reservation
+## Reservations and administrator actions
 
-Controller admin checks time first:
+Slurm Web may be view-only in this setup. Controller Super Admin actions are performed from the controller terminal.
+
+Run the interactive admin menu:
 
 ```bash
-date
-timedatectl
+sudo bash slurm_superadmin_menu.sh
 ```
 
-Then creates reservation using controller time:
+It supports active-job listing, single job cancellation, cancel-all for a user, reservation create/delete, and QoS inspection. Destructive actions require typed confirmation.
+
+Manual reservation example:
 
 ```bash
 sudo scontrol create reservation \
-  ReservationName=it14-evening \
-  StartTime=YYYY-MM-DDTHH:MM:SS \
-  EndTime=YYYY-MM-DDTHH:MM:SS \
-  Users=it14 \
-  Nodes=worker1 \
-  TRES=cpu=2,mem=4G,gres/gpu=1 \
+  ReservationName=<name> \
+  StartTime=<YYYY-MM-DDTHH:MM:SS> \
+  EndTime=<YYYY-MM-DDTHH:MM:SS> \
+  Users=<username> \
+  Nodes=<worker-name> \
+  TRES=cpu=2,mem=1G,gres/gpu=1 \
   Flags=PART_NODES
 ```
 
-Check it:
+Check or delete:
 
 ```bash
-scontrol show reservation it14-evening
+scontrol show reservation <name>
+sudo scontrol delete ReservationName=<name>
 ```
 
-User enters `it14-evening` at the reservation prompt in the submit script.
+## GPU notes
 
-## GPU limitation
-
-RTX 3060 is one Slurm GPU:
+An RTX-class GPU that lacks NVIDIA MIG support is normally one Slurm allocatable GPU:
 
 ```bash
 #SBATCH --gres=gpu:1
 ```
 
-It cannot be split into strict 2 GB VRAM slices because RTX 3060 has no MIG support. MPS can share compute but cannot enforce a 2 GB VRAM limit.
+It cannot be split into strict VRAM-sized resources, such as 2 GB per user. NVIDIA MPS can share compute but does not enforce a VRAM limit. Allocate whole GPUs for reliable scheduling.
 
-## Daily checks
+The worker VM must have enough configured `RealMemory` to satisfy every requested job. A 4 GB job cannot start on a worker with less than 4 GB Slurm-allocatable memory. Increase VM RAM, update worker `RealMemory` in controller configuration, reconfigure, then retry.
+
+## Daily health checks
 
 Controller:
 
 ```bash
 sinfo -N -l
 squeue
-sudo systemctl is-active munge slapd nfs-server slurmdbd slurmctld slurmrestd slurm-web-agent slurm-web-gateway
 sudo exportfs -v
+sudo systemctl is-active munge slapd nfs-server slurmdbd slurmctld slurmrestd slurm-web-agent slurm-web-gateway
 ```
 
-Login:
+Login node:
 
 ```bash
-getent passwd it14
+getent passwd <username>
 findmnt /shared/home
 sinfo
 systemctl is-active munge sssd
@@ -354,7 +392,7 @@ systemctl is-active munge sssd
 Worker:
 
 ```bash
-getent passwd it14
+getent passwd <username>
 findmnt /shared/home
 systemctl is-active munge slurmd sssd
 nvidia-smi -L
@@ -363,18 +401,21 @@ slurmd -G
 
 ## Troubleshooting
 
-| Problem | Fix |
+| Symptom | Resolution |
 |---|---|
-| `bash\r` error | `sed -i 's/\r$//' script.sh` |
-| Cannot enter shared home | `sudo chmod 755 /shared /shared/home` on controller and clients |
-| User missing on worker | Run LDAP identity script on worker; restart `sssd` |
-| NFS fails | Check `sudo exportfs -v`, permitted IP/subnet, and routing |
-| Worker absent in `sinfo` | Check MUNGE key, port 6817, `slurmd`, node definition |
-| GPU missing | NVML plugin, `AutoDetect=nvml`, then restart `slurmd` |
-| Job pending | `squeue -j JOB_ID -o '%.18i %.9T %.80R'` |
+| `bash\r` error | Convert the script using `sed -i 's/\r$//' <script>.sh` |
+| User cannot enter `/shared/home/<user>` | Check NFS mount and run `sudo chmod 755 /shared /shared/home` on controller and clients |
+| User resolves on login but not worker | Configure/restart SSSD on worker and verify `getent passwd <user>` |
+| NFS mount fails | Check `sudo exportfs -v`, NFS allow-list, routing, and firewall rules |
+| Worker absent in `sinfo` | Check MUNGE key, controller reachability, port 6817, Slurmd status, node definition |
+| GPU absent | Install NVML plugin, set `AutoDetect=nvml`, restart Slurmd |
+| Invalid account/partition | Add matching Slurm account, user, partition association, and QoS |
+| Requested node configuration unavailable | Requested CPU/RAM/GPU exceeds worker resources or QoS limit |
+| Job missing from active Web UI | Short jobs complete quickly; use job history/accounting view or a longer test workload |
 
 ## Security
 
-- Keep controller, LDAP admin, database, and user passwords separate in production.
-- Never share the MUNGE key or LDAP admin password with ordinary users.
-- Production LDAP should use TLS/LDAPS and a read-only bind account.
+- Keep controller SSH, database, LDAP-admin, and normal-user passwords separate.
+- Do not share MUNGE keys or LDAP administrator credentials with normal users.
+- Use TLS/LDAPS and a restricted read-only service account in production.
+- Back up `/etc/slurm`, `/etc/munge/munge.key`, `/etc/sssd`, `/etc/exports`, LDAP data, and Slurm accounting data before major changes.

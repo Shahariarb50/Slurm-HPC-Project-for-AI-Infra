@@ -110,7 +110,9 @@ delete_user(){
   [[ "$confirm" == "DELETE-$u" ]] || die 'Confirmation did not match.'
   uid="$(ldapsearch -LLL -x -D "$admin_dn" -y "$bind_file" -b "$(user_dn "$u")" '(objectClass=posixAccount)' uidNumber | awk -F': ' '/^uidNumber:/{print $2;exit}')"
   for g in slurm-users slurm-admins slurm-superadmins; do remove_member "$g" "$u"; done
+  # Remove both the user association and its dedicated Slurm account.
   sacctmgr -i delete user where name="$u" || true
+  sacctmgr -i delete account where name="$u" || true
   archive="/shared/home-archive/$u-$(date +%Y%m%d-%H%M%S)"
   if [[ -d "/shared/home/$u" ]]; then
     install -d -m 0750 /shared/home-archive
@@ -119,7 +121,12 @@ delete_user(){
   fi
   group_exists "$u" && ldapdelete -x -D "$admin_dn" -y "$bind_file" "$(group_dn "$u")"
   ldapdelete -x -D "$admin_dn" -y "$bind_file" "$(user_dn "$u")"
-  echo "[OK] User $u deleted. UID was $uid."
+
+  # Fail loudly if any LDAP or Slurm identity remains; do not claim success.
+  user_exists "$u" && die "LDAP user $u still exists; deletion is incomplete."
+  sacctmgr -n show user where name="$u" format=User | grep -q '[^[:space:]]' && die "Slurm user $u still exists; deletion is incomplete."
+  sacctmgr -n show account "$u" format=Account | grep -q '[^[:space:]]' && die "Slurm account $u still exists; deletion is incomplete."
+  echo "[OK] User $u fully deleted. UID was $uid. Restart SSSD on login/worker before reusing this username."
 }
 
 create_group(){
