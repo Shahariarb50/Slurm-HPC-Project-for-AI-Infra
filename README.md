@@ -72,43 +72,15 @@ GitHub renders the following Mermaid block as a graphical diagram.
 
 ```mermaid
 flowchart LR
-    U([User workstation]) -->|SSH| L
-
-    subgraph Login[Login node]
-        L[User shell<br/>sbatch · srun · squeue · sinfo]
-        LM[MUNGE + SSSD + NFS client]
-        L --- LM
-    end
-
-    subgraph Controller[Controller node]
-        C[slurmctld<br/>scheduler and cluster state]
-        D[slurmdbd<br/>accounting gateway]
-        DB[(MariaDB / MySQL)]
-        LDAP[(LDAP directory)]
-        NFS[(NFS export<br/>/shared/home)]
-        WEB[Optional Slurm Web<br/>gateway + agent + slurmrestd]
-        C -->|accounting RPC · TCP 6819| D
-        D -->|SQL · local socket or TCP 3306| DB
-        WEB --> C
-        WEB --> D
-    end
-
-    subgraph Compute[GPU worker node]
-        S[slurmd<br/>node agent]
-        STEP[slurmstepd<br/>job-step supervisor]
-        GPU[NVIDIA GPU / NVML]
-        CM[MUNGE + SSSD + NFS client]
-        S --> STEP --> GPU
-        S --- CM
-    end
-
-    L <-->|Slurm RPC · TCP 6817| C
-    C <-->|Slurm RPC · TCP 6818| S
-    LDAP -. identity lookup .-> LM
-    LDAP -. identity lookup .-> CM
-    NFS -. shared home .-> LM
-    NFS -. shared home .-> CM
+    U([User]) -->|SSH| L[Login node<br/>Submit jobs]
+    L -->|Job request| C[Controller<br/>Schedule jobs]
+    C -->|Run job| W[Worker node<br/>CPU / GPU]
+    C -->|Save history| D[(Accounting database)]
+    H[(Shared home)] -. files .-> L
+    H -. files .-> W
 ```
+
+The main path is **User → Login node → Controller → Worker**. The database stores accounting history, while the shared home makes the same user files available on the login and worker nodes. LDAP/SSSD supplies consistent identities, and MUNGE authenticates Slurm communication.
 
 ### Trust and data planes
 
@@ -141,27 +113,11 @@ These are defaults or common values, not universal firewall rules. The actual va
 ## How a job moves through the cluster
 
 ```mermaid
-sequenceDiagram
-    actor User
-    participant Login as Login node
-    participant Ctld as slurmctld
-    participant Dbd as slurmdbd
-    participant D as slurmd
-    participant Step as slurmstepd
-    participant SQL as MariaDB/MySQL
-
-    User->>Login: sbatch my-job.sbatch
-    Login->>Ctld: Authenticated job request
-    Ctld->>Ctld: Validate account, partition, QoS and resources
-    Ctld-->>Login: Return job ID
-    Ctld->>D: Allocate node and send launch credential
-    D->>Step: Create job step under the user identity
-    Step->>Step: Apply CPU, memory and GPU controls
-    Step-->>Ctld: State, exit code and usage
-    Ctld->>Dbd: Accounting records
-    Dbd->>SQL: Persist job and usage data
-    Login->>Ctld: squeue / scontrol query
-    User->>Login: Read output from shared home
+flowchart LR
+    A[1. Submit job] --> B[2. Wait in queue]
+    B --> C[3. Get resources]
+    C --> D[4. Run on worker]
+    D --> E[5. Save output and usage]
 ```
 
 In plain language:
@@ -308,18 +264,7 @@ bash -n <script>.sh
 
 ## Installation workflow
 
-```mermaid
-flowchart TD
-    A[Plan names, addresses, versions and backups] --> B[Build controller]
-    B --> C[Configure NFS export]
-    C --> D[Configure login node]
-    D --> E[Transfer MUNGE key securely]
-    E --> F[Configure worker and detect GPU]
-    F --> G[Update controller node definition]
-    G --> H[Create LDAP + Slurm user]
-    H --> I[Submit CPU/GPU smoke tests]
-    I --> J[Verify accounting, limits and recovery]
-```
+Follow this order: prepare the hosts, build the controller, configure NFS, configure the login node, transfer the MUNGE key, configure the worker, create a user, and finally run the CPU/GPU smoke tests.
 
 ### 1. Prepare every host
 
