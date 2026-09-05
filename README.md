@@ -55,6 +55,48 @@ This prevents the `bash\r: No such file or directory` error.
 
 ## Installation order
 
+### Exact execution sequence
+
+Run the scripts in this order. Commands shown on the same node must be run in the listed sequence.
+
+| Step | Node | Command |
+|---:|---|---|
+| 1 | Controller | `sudo bash setup-slurm-web-controller-dynamic.sh` |
+| 2 | Controller | `sudo bash setup_shared_home_controller_dynamic.sh` |
+| 3 | Login node | `sudo bash setup-login-node-dynamic.sh` |
+| 4 | Login node | `sudo bash setup_ldap_identity_client_dynamic.sh` |
+| 5 | Login node | `sudo bash setup_shared_home_login_dynamic.sh` |
+| 6 | Worker 1 | Copy the controller MUNGE key to `/root/controller-munge.key` |
+| 7 | Worker 1 | `sudo bash setup-worker-node-gpu-dynamic.sh` |
+| 8 | Worker 1 | `sudo bash setup_ldap_identity_client_dynamic.sh` |
+| 9 | Worker 1 | `sudo bash setup_shared_home_worker_dynamic.sh` |
+| 10 | Controller | `sudo bash add_slurm_worker_dynamic.sh` and enter Worker 1 details |
+| 11 | Worker 2 | Repeat steps 6–9 with the Worker 2 hostname and IP |
+| 12 | Controller | Run `sudo bash add_slurm_worker_dynamic.sh` again and enter Worker 2 details |
+| 13 | Controller | `sudo bash create_ldap_slurm_user_dynamic.sh` for every required user |
+| 14 | Login node, as the LDAP user | `bash submit_slurm_job_dynamic.sh` |
+
+Run `setup-slurm-web-controller-dynamic.sh` only for a new or intentionally rebuilt controller. Do not rerun it on an operating cluster just to add a worker. The similarly named `setup-worker-node-with-gpu-dynamic.sh` is an older duplicate; use `setup-worker-node-gpu-dynamic.sh` in the sequence above.
+
+After steps 10 and 12, verify from the controller:
+
+```bash
+sinfo -N -o '%N %T %c %m %G'
+scontrol show nodes
+```
+
+After steps 8 and 9, verify from each worker:
+
+```bash
+getent passwd <ldap-user>
+findmnt /shared/home
+systemctl is-active munge slurmd sssd
+nvidia-smi -L
+slurmd -G
+```
+
+User/group editing is not part of initial installation. Run `sudo bash manage_ldap_slurm_users_groups_dynamic.sh` on the controller whenever an administrator needs to change or delete a user, role, or group. Run `sudo bash slurm_superadmin_menu.sh` on the controller for job cancellation, reservations, and QoS administration.
+
 ### 1. Build the controller
 
 Run the full controller script only on a new or intentionally rebuilt controller:
