@@ -23,6 +23,12 @@ LDAP: controller -> login node and worker via SSSD
 MUNGE: same authentication key on controller, login, and workers
 ```
 
+### Graphical installation and connection flow
+
+![Slurm HPC installation steps and service connections](./docs/images/slurm-hpc-installation-flow.png)
+
+The numbered badges show the execution order. Service connections originate from the controller: Slurm control traffic uses port `6817`, LDAP identities are resolved through SSSD, NFS provides `/shared/home`, and every cluster node uses the same MUNGE key. Scheduled jobs are submitted from the login node, coordinated by the controller, and executed on the allocated workers.
+
 The login and worker nodes may be on different routed subnets. NFS exports must explicitly allow every client IP or permitted client subnet.
 
 ## Scripts
