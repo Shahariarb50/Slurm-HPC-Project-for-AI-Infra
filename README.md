@@ -1,6 +1,6 @@
 # Slurm Cluster Lab Guide
 
-This document describes a reusable Slurm cluster setup with a controller, login node, GPU worker, LDAP users, NFS shared homes, Slurm Web, QoS limits, roles, and job management.
+This document describes a reusable Slurm cluster setup with a controller, login node, multiple GPU workers, LDAP users, NFS shared homes, Slurm Web, QoS limits, roles, and job management. It includes the supported case where two workers each provide one GPU to a single distributed job.
 
 It intentionally contains no real IP addresses, usernames, passwords, or private keys. Replace every placeholder enclosed by angle brackets before use.
 
@@ -10,7 +10,7 @@ It intentionally contains no real IP addresses, usernames, passwords, or private
 |---|---|
 | Controller | Runs Slurm controller, accounting database, LDAP, NFS, and optionally Slurm Web |
 | Login node | Accepts normal-user SSH login and submits Slurm jobs |
-| Worker node | Runs allocated jobs and exposes CPU, RAM, and optional GPU resources |
+| Worker nodes | Run allocated jobs and expose CPU, RAM, and optional GPU resources |
 | LDAP | Central user/group identity store |
 | NFS | Shared user homes mounted at `/shared/home` |
 
@@ -35,6 +35,7 @@ The login and worker nodes may be on different routed subnets. NFS exports must 
 | `setup_ldap_identity_client_dynamic.sh` | Login and worker | Configures LDAP/SSSD identity resolution |
 | `setup_shared_home_login_dynamic.sh` | Login node | Mounts the NFS shared home persistently |
 | `setup-worker-node-gpu-dynamic.sh` | Worker | Configures Slurmd and NVIDIA GPU auto-detection |
+| `add_slurm_worker_dynamic.sh` | Controller | Safely registers or updates one worker and adds it to the partition |
 | `setup_shared_home_worker_dynamic.sh` | Worker | Mounts the NFS shared home persistently |
 | `create_ldap_slurm_user_dynamic.sh` | Controller | Creates LDAP user, Slurm account, QoS association, and private home |
 | `manage_ldap_slurm_users_groups_dynamic.sh` | Controller | Edits/deletes users and manages LDAP groups |
@@ -113,14 +114,13 @@ sinfo
 systemctl is-active munge sssd
 ```
 
-### 4. Configure worker node
+### 4. Configure each worker node
 
-Copy the controller MUNGE key securely to the worker before starting Slurmd:
+Every worker must use the exact MUNGE key from the controller. Copy it securely to the worker as a temporary root-only file before starting Slurmd:
 
 ```bash
-sudo install -o munge -g munge -m 400 /tmp/munge.key /etc/munge/munge.key
-sudo rm /tmp/munge.key
-sudo systemctl restart munge
+sudo chown root:root /root/controller-munge.key
+sudo chmod 400 /root/controller-munge.key
 ```
 
 Then run:
@@ -131,12 +131,22 @@ sudo bash setup_ldap_identity_client_dynamic.sh
 sudo bash setup_shared_home_worker_dynamic.sh
 ```
 
-The GPU worker script prints an exact `NodeName=... Gres=...` line. Add that exact detected line to the controller `/etc/slurm/slurm.conf`, ensure `GresTypes=gpu` is present, then run:
+The worker script reports its detected CPU, memory, and GPU GRES values. On the controller, register that worker with:
 
 ```bash
-sudo scontrol reconfigure
-sudo scontrol update NodeName=<worker-name> State=IDLE
-sinfo -N -o '%N %T %G'
+sudo bash add_slurm_worker_dynamic.sh
+```
+
+Enter the worker hostname, IP, CPU count, `RealMemory`, and the detected GRES value, for example `gpu:nvidia_geforce_rtx_3060:1`. The registration script backs up `slurm.conf`, avoids duplicate node entries, updates the partition, and reconfigures Slurm.
+
+Repeat the worker setup and controller registration once for every worker. Do not rerun `setup-slurm-web-controller-dynamic.sh` to add a worker; that script is intended for a fresh controller installation.
+
+Verify all registered workers:
+
+```bash
+sinfo -N -o '%N %T %c %m %G'
+scontrol show node <worker-1>
+scontrol show node <worker-2>
 ```
 
 For NVIDIA GPUs, the worker needs the NVML Slurm plugin and this GRES configuration:
@@ -298,9 +308,11 @@ Example batch file:
 #SBATCH --job-name=gpu-test
 #SBATCH --partition=<partition>
 #SBATCH --account=<username>
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=1G
-#SBATCH --gres=gpu:1
+#SBATCH --gpus=1
 #SBATCH --time=02:00:00
 #SBATCH --output=%x-%j.out
 #SBATCH --error=%x-%j.err
@@ -308,6 +320,31 @@ Example batch file:
 nvidia-smi
 python train.py
 ```
+
+### One job using two GPUs on two workers
+
+When each worker has only one GPU, `--gres=gpu:2` is incorrect because it asks for two GPUs on every allocated node. Request two nodes and two GPUs for the whole job instead:
+
+```bash
+#!/usr/bin/env bash
+#SBATCH --job-name=two-node-gpu-job
+#SBATCH --partition=cluster
+#SBATCH --account=<username>
+#SBATCH --nodes=2
+#SBATCH --ntasks=2
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=1G
+#SBATCH --gpus=nvidia_geforce_rtx_3060:2
+#SBATCH --time=01:00:00
+#SBATCH --output=%x-%j.out
+#SBATCH --error=%x-%j.err
+
+srun nvidia-smi -L
+```
+
+The interactive `submit_slurm_job_dynamic.sh` script now asks for node count, task count, total GPU count, and optional GPU type. For the topology above, enter `2` nodes, `2` tasks, and `2` total GPUs.
+
+`srun nvidia-smi -L` verifies that a job step runs on both allocated workers. Real multi-node AI training also needs a distributed application launcher such as PyTorch `torchrun`; a single ordinary Python process cannot directly use a GPU located on another worker.
 
 `python train.py` is the real workload command. `sleep` is useful only for testing a running job or demonstrating Web UI visibility.
 
@@ -365,6 +402,8 @@ An RTX-class GPU that lacks NVIDIA MIG support is normally one Slurm allocatable
 #SBATCH --gres=gpu:1
 ```
 
+For a single node this GRES form is valid. For a total GPU request spanning multiple one-GPU workers, use `--nodes=<count>` together with `--gpus=<type>:<total>` as shown above.
+
 It cannot be split into strict VRAM-sized resources, such as 2 GB per user. NVIDIA MPS can share compute but does not enforce a VRAM limit. Allocate whole GPUs for reliable scheduling.
 
 The worker VM must have enough configured `RealMemory` to satisfy every requested job. A 4 GB job cannot start on a worker with less than 4 GB Slurm-allocatable memory. Increase VM RAM, update worker `RealMemory` in controller configuration, reconfigure, then retry.
@@ -410,7 +449,7 @@ slurmd -G
 | Worker absent in `sinfo` | Check MUNGE key, controller reachability, port 6817, Slurmd status, node definition |
 | GPU absent | Install NVML plugin, set `AutoDetect=nvml`, restart Slurmd |
 | Invalid account/partition | Add matching Slurm account, user, partition association, and QoS |
-| Requested node configuration unavailable | Requested CPU/RAM/GPU exceeds worker resources or QoS limit |
+| Requested node configuration unavailable | Check CPU/RAM/GPU and QoS limits. With one GPU per worker, do not request `--gres=gpu:2`; use two nodes and `--gpus=<type>:2` |
 | Job missing from active Web UI | Short jobs complete quickly; use job history/accounting view or a longer test workload |
 
 ## Security
