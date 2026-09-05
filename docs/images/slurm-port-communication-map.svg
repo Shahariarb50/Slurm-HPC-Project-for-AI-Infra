@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1900" height="1250" viewBox="0 0 1900 1250" role="img" aria-labelledby="title desc">
+  <title id="title">Slurm HPC node-to-node communication ports</title>
+  <desc id="desc">A vector diagram showing connection initiators, listening components, TCP ports, local services, and portless local components.</desc>
+  <defs>
+    <linearGradient id="header2" x1="0" x2="1"><stop stop-color="#071b3d"/><stop offset="1" stop-color="#123b78"/></linearGradient>
+    <filter id="s2"><feDropShadow dx="0" dy="5" stdDeviation="7" flood-color="#0f172a" flood-opacity=".15"/></filter>
+    <marker id="blueArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#2563eb"/></marker>
+    <marker id="purpleArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#7c3aed"/></marker>
+    <marker id="greenArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#16a34a"/></marker>
+    <marker id="orangeArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#ea580c"/></marker>
+    <marker id="grayArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker>
+    <style>
+      .title{font:700 48px Arial,sans-serif;fill:#fff}.subtitle{font:24px Arial,sans-serif;fill:#cfe1ff}
+      .card{fill:#fff;stroke:#bfd0e7;stroke-width:2;rx:18;filter:url(#s2)}.cardhead{font:700 28px Arial,sans-serif;fill:#0f2550}
+      .component{font:700 20px Arial,sans-serif;fill:#17233d}.muted{font:18px Arial,sans-serif;fill:#52627a}
+      .label{font:700 18px Arial,sans-serif;fill:#17233d;text-anchor:middle}.port{font:700 19px Arial,sans-serif;fill:#fff;text-anchor:middle;dominant-baseline:central}
+      .notehead{font:700 24px Arial,sans-serif;fill:#0f2550}.note{font:19px Arial,sans-serif;fill:#26364f}
+      .local{font:700 19px Arial,sans-serif;fill:#0f5061}.legend{font:700 18px Arial,sans-serif;fill:#24344f}
+    </style>
+  </defs>
+  <rect width="1900" height="1250" fill="#f5f8fc"/>
+  <rect width="1900" height="125" fill="url(#header2)"/>
+  <text x="950" y="58" class="title" text-anchor="middle">Slurm HPC Node-to-Node Communication</text>
+  <text x="950" y="94" class="subtitle" text-anchor="middle">Components, TCP ports and connection direction</text>
+
+  <!-- Node cards -->
+  <rect x="45" y="165" width="270" height="545" class="card"/><rect x="45" y="165" width="270" height="65" rx="18" fill="#fff1e8"/>
+  <text x="180" y="207" class="cardhead" text-anchor="middle">USER / ADMIN</text>
+  <text x="80" y="285" class="component">Web browser</text><text x="80" y="315" class="muted">Management UI</text>
+  <text x="80" y="390" class="component">SSH client</text><text x="80" y="420" class="muted">Login / administration</text>
+
+  <rect x="405" y="165" width="340" height="545" class="card"/><rect x="405" y="165" width="340" height="65" rx="18" fill="#e8f1ff"/>
+  <text x="575" y="207" class="cardhead" text-anchor="middle">LOGIN NODE</text>
+  <text x="445" y="275" class="component">OpenSSH server</text>
+  <text x="445" y="345" class="component">Slurm client</text><text x="445" y="375" class="muted">sbatch · squeue · srun</text>
+  <text x="445" y="445" class="component">SSSD LDAP client</text>
+  <text x="445" y="515" class="component">NFSv4 client</text>
+  <text x="445" y="585" class="component">MUNGE</text><text x="445" y="615" class="muted">Local credential check</text>
+
+  <rect x="840" y="165" width="390" height="545" class="card"/><rect x="840" y="165" width="390" height="65" rx="18" fill="#e8f1ff"/>
+  <text x="1035" y="207" class="cardhead" text-anchor="middle">CONTROLLER</text>
+  <text x="880" y="275" class="component">Slurm Web Gateway</text>
+  <text x="880" y="345" class="component">slurmctld</text>
+  <text x="880" y="445" class="component">OpenLDAP</text>
+  <text x="880" y="515" class="component">NFS server</text>
+  <text x="880" y="585" class="component">MUNGE</text><text x="880" y="615" class="muted">Local credential check</text>
+
+  <rect x="1325" y="165" width="530" height="545" class="card"/><rect x="1325" y="165" width="530" height="65" rx="18" fill="#f0eaff"/>
+  <text x="1590" y="207" class="cardhead" text-anchor="middle">GPU WORKERS 1 &amp; 2</text>
+  <text x="1370" y="275" class="component">slurmd</text><text x="1370" y="305" class="muted">Compute daemon on each worker</text>
+  <text x="1370" y="405" class="component">SSSD LDAP client</text>
+  <text x="1370" y="475" class="component">NFSv4 client</text>
+  <text x="1370" y="545" class="component">MUNGE</text><text x="1370" y="575" class="muted">Local credential check</text>
+  <text x="1370" y="640" class="component">GPU / NVML</text><text x="1370" y="670" class="muted">Local hardware discovery</text>
+
+  <!-- User and web/SSH -->
+  <path d="M315 275H840" stroke="#ea580c" stroke-width="5" fill="none" marker-end="url(#orangeArrow)"/>
+  <rect x="515" y="248" width="145" height="38" rx="19" fill="#ea580c"/><text x="588" y="267" class="port">TCP 5011</text>
+  <text x="588" y="310" class="label">Browser → Web Gateway</text>
+  <path d="M315 390H405" stroke="#ea580c" stroke-width="5" fill="none" marker-end="url(#orangeArrow)"/>
+  <rect x="325" y="405" width="75" height="36" rx="18" fill="#ea580c"/><text x="362" y="423" class="port">22</text>
+
+  <!-- Login to controller -->
+  <path d="M745 345H840" stroke="#2563eb" stroke-width="6" fill="none" marker-end="url(#blueArrow)"/>
+  <rect x="748" y="305" width="90" height="36" rx="18" fill="#2563eb"/><text x="793" y="323" class="port">6817</text>
+  <path d="M745 445H840" stroke="#7c3aed" stroke-width="6" fill="none" marker-end="url(#purpleArrow)"/>
+  <rect x="730" y="402" width="110" height="36" rx="18" fill="#7c3aed"/><text x="785" y="420" class="port">389 / 636</text>
+  <path d="M745 515H840" stroke="#16a34a" stroke-width="6" fill="none" marker-end="url(#greenArrow)"/>
+  <rect x="750" y="472" width="88" height="36" rx="18" fill="#16a34a"/><text x="794" y="490" class="port">2049</text>
+
+  <!-- Controller and workers -->
+  <path d="M1230 300H1325" stroke="#2563eb" stroke-width="6" fill="none" marker-end="url(#blueArrow)"/>
+  <rect x="1235" y="255" width="88" height="36" rx="18" fill="#2563eb"/><text x="1279" y="273" class="port">6818</text>
+  <text x="1278" y="335" class="label">slurmctld → slurmd</text>
+  <path d="M1325 355H1230" stroke="#2563eb" stroke-width="6" fill="none" marker-end="url(#blueArrow)"/>
+  <rect x="1235" y="365" width="88" height="36" rx="18" fill="#2563eb"/><text x="1279" y="383" class="port">6817</text>
+  <text x="1278" y="425" class="label">slurmd → slurmctld</text>
+  <path d="M1325 445H1230" stroke="#7c3aed" stroke-width="6" fill="none" marker-end="url(#purpleArrow)"/>
+  <rect x="1235" y="438" width="88" height="36" rx="18" fill="#7c3aed"/><text x="1279" y="456" class="port">389</text>
+  <path d="M1325 515H1230" stroke="#16a34a" stroke-width="6" fill="none" marker-end="url(#greenArrow)"/>
+  <rect x="1235" y="508" width="88" height="36" rx="18" fill="#16a34a"/><text x="1279" y="526" class="port">2049</text>
+
+  <!-- Dynamic app traffic -->
+  <path d="M745 660C950 755 1130 755 1325 660" stroke="#64748b" stroke-width="5" stroke-dasharray="14 10" fill="none" marker-end="url(#grayArrow)"/>
+  <rect x="800" y="700" width="470" height="70" rx="14" fill="#eef2f7" stroke="#94a3b8"/>
+  <text x="1035" y="730" class="label">srun / MPI / NCCL / application traffic</text>
+  <text x="1035" y="758" class="muted" text-anchor="middle">Dynamic or site-defined ports</text>
+
+  <!-- Controller-local -->
+  <rect x="45" y="815" width="1185" height="330" rx="20" fill="#e8fbff" stroke="#0891b2" stroke-width="3"/>
+  <text x="85" y="862" class="notehead">Controller-local services — do not expose between nodes</text>
+  <g transform="translate(85 905)">
+    <rect x="0" y="0" width="250" height="70" rx="12" fill="#fff" stroke="#8ed7e4"/><text x="125" y="42" class="component" text-anchor="middle">Slurm Web Agent</text>
+    <path d="M250 35H410" stroke="#0891b2" stroke-width="5" marker-end="url(#blueArrow)"/><rect x="270" y="0" width="120" height="30" rx="15" fill="#0891b2"/><text x="330" y="15" class="port">127.0.0.1:6820</text>
+    <rect x="410" y="0" width="210" height="70" rx="12" fill="#fff" stroke="#8ed7e4"/><text x="515" y="42" class="component" text-anchor="middle">slurmrestd</text>
+    <rect x="0" y="105" width="250" height="70" rx="12" fill="#fff" stroke="#8ed7e4"/><text x="125" y="147" class="component" text-anchor="middle">slurmctld</text>
+    <path d="M250 140H410" stroke="#0891b2" stroke-width="5" marker-end="url(#blueArrow)"/><rect x="290" y="105" width="85" height="30" rx="15" fill="#0891b2"/><text x="332" y="120" class="port">6819</text>
+    <rect x="410" y="105" width="210" height="70" rx="12" fill="#fff" stroke="#8ed7e4"/><text x="515" y="147" class="component" text-anchor="middle">slurmdbd</text>
+    <path d="M620 140H780" stroke="#0891b2" stroke-width="5" marker-end="url(#blueArrow)"/><rect x="660" y="105" width="85" height="30" rx="15" fill="#0891b2"/><text x="702" y="120" class="port">3306</text>
+    <rect x="780" y="105" width="210" height="70" rx="12" fill="#fff" stroke="#8ed7e4"/><text x="885" y="147" class="component" text-anchor="middle">MariaDB</text>
+  </g>
+
+  <!-- Notes -->
+  <rect x="1270" y="815" width="585" height="330" rx="20" fill="#fff" stroke="#bfd0e7" stroke-width="2"/>
+  <text x="1310" y="862" class="notehead">Important notes</text>
+  <circle cx="1320" cy="910" r="16" fill="#0891b2"/><text x="1320" y="916" class="port">1</text>
+  <text x="1350" y="902" class="note">MUNGE uses the same key on every Slurm node.</text><text x="1350" y="930" class="note">It opens no network port.</text>
+  <circle cx="1320" cy="985" r="16" fill="#0891b2"/><text x="1320" y="991" class="port">2</text>
+  <text x="1350" y="977" class="note">GPU/NVML is local hardware discovery.</text><text x="1350" y="1005" class="note">It opens no node-to-node port.</text>
+  <circle cx="1320" cy="1060" r="16" fill="#0891b2"/><text x="1320" y="1066" class="port">3</text>
+  <text x="1350" y="1052" class="note">Arrows show:</text><text x="1350" y="1080" class="note">connection initiator → listener.</text>
+
+  <!-- Legend -->
+  <g transform="translate(80 1195)">
+    <circle cx="0" cy="0" r="10" fill="#2563eb"/><text x="18" y="7" class="legend">Slurm</text>
+    <circle cx="150" cy="0" r="10" fill="#7c3aed"/><text x="168" y="7" class="legend">LDAP</text>
+    <circle cx="295" cy="0" r="10" fill="#16a34a"/><text x="313" y="7" class="legend">NFS</text>
+    <circle cx="420" cy="0" r="10" fill="#ea580c"/><text x="438" y="7" class="legend">Web / SSH</text>
+    <circle cx="590" cy="0" r="10" fill="#0891b2"/><text x="608" y="7" class="legend">Controller-local</text>
+    <line x1="800" y1="0" x2="875" y2="0" stroke="#64748b" stroke-width="5" stroke-dasharray="12 8"/><text x="895" y="7" class="legend">Dynamic application traffic</text>
+  </g>
+</svg>

@@ -25,13 +25,17 @@ MUNGE: same authentication key on controller, login, and workers
 
 ### Graphical installation and connection flow
 
-![Slurm HPC installation steps and service connections](./docs/images/slurm-hpc-installation-flow.png)
+![Slurm HPC installation steps and service connections](./docs/images/slurm-hpc-installation-flow.svg)
+
+[Open the full-size vector installation diagram](./docs/images/slurm-hpc-installation-flow.svg)
 
 The numbered badges show the execution order. Service connections originate from the controller: Slurm control traffic uses port `6817`, LDAP identities are resolved through SSSD, NFS provides `/shared/home`, and every cluster node uses the same MUNGE key. Scheduled jobs are submitted from the login node, coordinated by the controller, and executed on the allocated workers.
 
 ### Node-to-node components and ports
 
-![Slurm node-to-node components, ports, and traffic direction](./docs/images/slurm-port-communication-map.png)
+![Slurm node-to-node components, ports, and traffic direction](./docs/images/slurm-port-communication-map.svg)
+
+[Open the full-size vector port diagram](./docs/images/slurm-port-communication-map.svg)
 
 The arrows show the connection initiator and listener. The table below is the exact port reference for this repository. Slurm's default controller and compute-daemon ports follow the [official Slurm network configuration guide](https://slurm.schedmd.com/network.html).
 

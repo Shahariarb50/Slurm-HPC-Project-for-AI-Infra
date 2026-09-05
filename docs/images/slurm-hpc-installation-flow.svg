@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1050" viewBox="0 0 1800 1050" role="img" aria-labelledby="title desc">
+  <title id="title">Slurm HPC installation and connection flow</title>
+  <desc id="desc">Numbered installation steps across the controller, login node, and two GPU workers, followed by the service connections.</desc>
+  <defs>
+    <linearGradient id="header" x1="0" x2="1">
+      <stop offset="0" stop-color="#071b3d"/><stop offset="1" stop-color="#123b78"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#0f172a" flood-opacity=".16"/>
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10Z" fill="#2563eb"/>
+    </marker>
+    <style>
+      .title{font:700 48px Arial,sans-serif;fill:#fff}.subtitle{font:24px Arial,sans-serif;fill:#cfe1ff}
+      .card{fill:#fff;stroke:#2563eb;stroke-width:3;rx:20;filter:url(#shadow)}
+      .worker{stroke:#7c3aed}.head{font:700 30px Arial,sans-serif;fill:#0f2550}
+      .step{font:600 22px Arial,sans-serif;fill:#17233d}.small{font:19px Arial,sans-serif;fill:#475569}
+      .badge{fill:#2563eb}.wbadge{fill:#7c3aed}.num{font:700 19px Arial,sans-serif;fill:#fff;text-anchor:middle;dominant-baseline:central}
+      .line{stroke:#dbe4f0;stroke-width:2}.flow{fill:none;stroke:#2563eb;stroke-width:5;marker-end:url(#arrow)}
+      .flowlabel{font:700 20px Arial,sans-serif;fill:#1d4ed8}.pilltext{font:700 18px Arial,sans-serif;fill:#fff;text-anchor:middle;dominant-baseline:central}
+      .legend{font:600 19px Arial,sans-serif;fill:#20304d}.callout{font:700 27px Arial,sans-serif;fill:#0f3b86;text-anchor:middle}
+    </style>
+  </defs>
+  <rect width="1800" height="1050" fill="#f5f8fc"/>
+  <path d="M0 0H1800V125H0Z" fill="url(#header)"/>
+  <text x="900" y="58" class="title" text-anchor="middle">Slurm HPC Installation &amp; Connection Flow</text>
+  <text x="900" y="94" class="subtitle" text-anchor="middle">Numbered execution order for a controller, login node and two one-GPU workers</text>
+
+  <!-- Controller -->
+  <rect x="55" y="180" width="400" height="590" class="card"/>
+  <rect x="55" y="180" width="400" height="72" rx="18" fill="#e8f1ff"/>
+  <text x="90" y="226" class="head">CONTROLLER</text>
+  <g transform="translate(85 292)">
+    <circle cx="22" cy="0" r="22" class="badge"/><text x="22" y="0" class="num">1</text><text x="60" y="7" class="step">Controller setup</text>
+    <line x1="0" y1="45" x2="340" y2="45" class="line"/>
+    <circle cx="22" cy="88" r="22" class="badge"/><text x="22" y="88" class="num">2</text><text x="60" y="95" class="step">NFS shared home</text>
+    <line x1="0" y1="133" x2="340" y2="133" class="line"/>
+    <circle cx="22" cy="176" r="22" class="badge"/><text x="22" y="176" class="num">10</text><text x="60" y="183" class="step">Register Worker 1</text>
+    <line x1="0" y1="221" x2="340" y2="221" class="line"/>
+    <circle cx="22" cy="264" r="22" class="badge"/><text x="22" y="264" class="num">12</text><text x="60" y="271" class="step">Register Worker 2</text>
+    <line x1="0" y1="309" x2="340" y2="309" class="line"/>
+    <circle cx="22" cy="352" r="22" class="badge"/><text x="22" y="352" class="num">13</text><text x="60" y="359" class="step">Create users</text>
+  </g>
+
+  <!-- Login -->
+  <rect x="575" y="180" width="400" height="500" class="card"/>
+  <rect x="575" y="180" width="400" height="72" rx="18" fill="#e8f1ff"/>
+  <text x="610" y="226" class="head">LOGIN NODE</text>
+  <g transform="translate(605 292)">
+    <circle cx="22" cy="0" r="22" class="badge"/><text x="22" y="0" class="num">3</text><text x="60" y="7" class="step">Login-node setup</text>
+    <line x1="0" y1="45" x2="340" y2="45" class="line"/>
+    <circle cx="22" cy="88" r="22" class="badge"/><text x="22" y="88" class="num">4</text><text x="60" y="95" class="step">LDAP identity</text>
+    <line x1="0" y1="133" x2="340" y2="133" class="line"/>
+    <circle cx="22" cy="176" r="22" class="badge"/><text x="22" y="176" class="num">5</text><text x="60" y="183" class="step">Mount shared home</text>
+    <line x1="0" y1="221" x2="340" y2="221" class="line"/>
+    <circle cx="22" cy="264" r="22" class="badge"/><text x="22" y="264" class="num">14</text><text x="60" y="271" class="step">Submit jobs</text>
+  </g>
+
+  <!-- Worker 1 -->
+  <rect x="1160" y="145" width="560" height="385" class="card worker"/>
+  <rect x="1160" y="145" width="560" height="72" rx="18" fill="#f0eaff"/>
+  <text x="1195" y="191" class="head">WORKER 1 · GPU 1</text>
+  <g transform="translate(1190 257)">
+    <circle cx="22" cy="0" r="22" class="wbadge"/><text x="22" y="0" class="num">6</text><text x="60" y="7" class="step">Copy the controller MUNGE key</text>
+    <line x1="0" y1="45" x2="500" y2="45" class="line"/>
+    <circle cx="22" cy="82" r="22" class="wbadge"/><text x="22" y="82" class="num">7</text><text x="60" y="89" class="step">Worker and GPU setup</text>
+    <line x1="0" y1="127" x2="500" y2="127" class="line"/>
+    <circle cx="22" cy="164" r="22" class="wbadge"/><text x="22" y="164" class="num">8</text><text x="60" y="171" class="step">LDAP identity</text>
+    <line x1="0" y1="209" x2="500" y2="209" class="line"/>
+    <circle cx="22" cy="246" r="22" class="wbadge"/><text x="22" y="246" class="num">9</text><text x="60" y="253" class="step">Mount shared home</text>
+  </g>
+
+  <!-- Worker 2 -->
+  <rect x="1160" y="585" width="560" height="185" class="card worker"/>
+  <rect x="1160" y="585" width="560" height="72" rx="18" fill="#f0eaff"/>
+  <text x="1195" y="631" class="head">WORKER 2 · GPU 1</text>
+  <circle cx="1212" cy="713" r="22" class="wbadge"/><text x="1212" y="713" class="num">11</text>
+  <text x="1250" y="720" class="step">Repeat Worker 1 steps 6-9</text>
+
+  <!-- Execution arrows -->
+  <path d="M455 265H575" class="flow"/><text x="515" y="248" class="flowlabel" text-anchor="middle">NEXT</text>
+  <path d="M975 265H1130Q1145 265 1145 250V235Q1145 220 1160 220" class="flow"/>
+  <path d="M1440 530V585" class="flow"/>
+  <path d="M1160 682H1085Q1045 682 1045 735V805Q1045 835 1015 835H255Q225 835 225 770" class="flow"/>
+  <text x="650" y="825" class="flowlabel" text-anchor="middle">Register workers on the controller, then create users</text>
+
+  <!-- Connection legend -->
+  <rect x="55" y="865" width="1665" height="130" rx="20" fill="#fff" stroke="#bfd0e7" stroke-width="2"/>
+  <text x="885" y="910" class="callout">Service connections used after installation</text>
+  <g transform="translate(110 950)">
+    <rect x="0" y="-23" width="225" height="42" rx="21" fill="#2563eb"/><text x="112" y="0" class="pilltext">Slurm · 6817 / 6818</text>
+    <rect x="260" y="-23" width="225" height="42" rx="21" fill="#7c3aed"/><text x="372" y="0" class="pilltext">LDAP · 389 / 636</text>
+    <rect x="520" y="-23" width="210" height="42" rx="21" fill="#16a34a"/><text x="625" y="0" class="pilltext">NFSv4 · 2049</text>
+    <rect x="765" y="-23" width="270" height="42" rx="21" fill="#0891b2"/><text x="900" y="0" class="pilltext">Same MUNGE key · no port</text>
+    <rect x="1070" y="-23" width="390" height="42" rx="21" fill="#ea580c"/><text x="1265" y="0" class="pilltext">2 nodes + 2 tasks + 2 total GPUs</text>
+  </g>
+</svg>
