@@ -29,6 +29,30 @@ MUNGE: same authentication key on controller, login, and workers
 
 The numbered badges show the execution order. Service connections originate from the controller: Slurm control traffic uses port `6817`, LDAP identities are resolved through SSSD, NFS provides `/shared/home`, and every cluster node uses the same MUNGE key. Scheduled jobs are submitted from the login node, coordinated by the controller, and executed on the allocated workers.
 
+### Node-to-node components and ports
+
+![Slurm node-to-node components, ports, and traffic direction](./docs/images/slurm-port-communication-map.png)
+
+The arrows show the connection initiator and listener. The table below is the exact port reference for this repository. Slurm's default controller and compute-daemon ports follow the [official Slurm network configuration guide](https://slurm.schedmd.com/network.html).
+
+| From | Initiating component | To | Listening component | Protocol/port | Purpose |
+|---|---|---|---|---|---|
+| Browser | Web browser | Controller | Slurm Web Gateway | TCP `5011` | Opens the management web interface configured by this repository |
+| Administrator | SSH client | Login node or managed server | OpenSSH server | TCP `22` | Administration and user login; expose only where required |
+| Login node | `sbatch`, `squeue`, `scontrol`, `srun` | Controller | `slurmctld` | TCP `6817` | Job submission, queue queries, allocation requests, and control RPC |
+| Worker | `slurmd` | Controller | `slurmctld` | TCP `6817` | Worker registration, status, and controller RPC |
+| Controller | `slurmctld` | Worker | `slurmd` | TCP `6818` | Launches and controls work on the compute node |
+| Login node and workers | SSSD LDAP client | Controller | OpenLDAP | TCP `389`; TCP `636` with LDAPS | Resolves users, groups, roles, and authentication identities |
+| Login node and workers | NFSv4 client | Controller | NFS server | TCP `2049` | Mounts the shared `/shared/home` filesystem |
+| Controller, local only | Slurm Web Agent | Controller | `slurmrestd` | `127.0.0.1:6820` | Slurm Web-to-REST API communication; not exposed between nodes |
+| Controller, local only | `slurmctld` | Controller | `slurmdbd` | TCP `6819` | Sends accounting records and association requests |
+| Controller, local only | `slurmdbd` | Controller | MariaDB | TCP `3306` | Stores Slurm accounting data |
+| Every Slurm node | MUNGE library | Same node | MUNGE daemon/key | No network port | Signs and verifies Slurm credentials locally using the same shared key |
+| Every GPU worker | Slurm GPU plugin | Same worker | NVIDIA NVML/driver | No network port | Discovers and accounts for local GPU devices |
+| Login/allocated workers | `srun`, MPI, NCCL, or the application | Allocated workers | Job step/application | Dynamic or site-defined ports | Carries interactive job I/O and distributed application traffic |
+
+Slurm requires bidirectional IP connectivity between the controller, compute nodes, and any host that runs `srun`. If the firewall must use a fixed range for `srun`, configure `SrunPortRange` in `slurm.conf`; keep it separate from `SlurmdPort`. See the official [`slurm.conf` reference](https://slurm.schedmd.com/slurm.conf.html).
+
 The login and worker nodes may be on different routed subnets. NFS exports must explicitly allow every client IP or permitted client subnet.
 
 ## Scripts
