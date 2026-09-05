@@ -35,7 +35,6 @@ The login and worker nodes may be on different routed subnets. NFS exports must 
 | `setup_ldap_identity_client_dynamic.sh` | Login and worker | Configures LDAP/SSSD identity resolution |
 | `setup_shared_home_login_dynamic.sh` | Login node | Mounts the NFS shared home persistently |
 | `setup-worker-node-gpu-dynamic.sh` | Worker | Configures Slurmd and NVIDIA GPU auto-detection |
-| `add_slurm_worker_dynamic.sh` | Controller | New: safely registers or updates a worker in Slurm and adds it to the partition |
 | `setup_shared_home_worker_dynamic.sh` | Worker | Mounts the NFS shared home persistently |
 | `create_ldap_slurm_user_dynamic.sh` | Controller | Creates LDAP user, Slurm account, QoS association, and private home |
 | `manage_ldap_slurm_users_groups_dynamic.sh` | Controller | Edits/deletes users and manages LDAP groups |
@@ -78,7 +77,7 @@ sinfo
 sudo bash setup_shared_home_controller_dynamic.sh
 ```
 
-Use `/shared/home` as the shared path. Permit either exact client IPs or routed CIDR networks. Enter **every** login-node and worker-node network in the allow-list. When a new worker is on a new subnet, rerun this script and enter all existing client subnets plus the new one.
+Use `/shared/home` as the shared path. Permit either exact client IPs or routed CIDR networks.
 
 ```bash
 sudo exportfs -v
@@ -114,16 +113,17 @@ sinfo
 systemctl is-active munge sssd
 ```
 
-### 4. Add and configure a worker node
+### 4. Configure worker node
 
-Each worker must use the exact MUNGE key from the controller. Copy it securely to the worker, for example as `/root/controller-munge.key`. Do not generate a new key on a worker.
+Copy the controller MUNGE key securely to the worker before starting Slurmd:
 
 ```bash
-sudo chmod 400 /root/controller-munge.key
-sudo chown root:root /root/controller-munge.key
+sudo install -o munge -g munge -m 400 /tmp/munge.key /etc/munge/munge.key
+sudo rm /tmp/munge.key
+sudo systemctl restart munge
 ```
 
-On the worker, run the updated setup script. It asks for the controller address and the local controller-key path. It validates controller TCP port `6817`, installs the MUNGE key with safe ownership, and detects CPU, RAM, and GPU resources.
+Then run:
 
 ```bash
 sudo bash setup-worker-node-gpu-dynamic.sh
@@ -131,27 +131,12 @@ sudo bash setup_ldap_identity_client_dynamic.sh
 sudo bash setup_shared_home_worker_dynamic.sh
 ```
 
-Then, on the controller, run the new registration script. It creates a timestamped backup of `/etc/slurm/slurm.conf`, adds or updates the node, adds it to the partition exactly once, and runs `scontrol reconfigure`.
+The GPU worker script prints an exact `NodeName=... Gres=...` line. Add that exact detected line to the controller `/etc/slurm/slurm.conf`, ensure `GresTypes=gpu` is present, then run:
 
 ```bash
-sudo bash add_slurm_worker_dynamic.sh
-```
-
-At its prompts, enter the worker hostname, IP address, CPU and `RealMemory` values reported by `slurmd -C`, and GPU GRES such as `gpu:nvidia_geforce_rtx_3060:1`. Leave GRES blank for a CPU-only worker.
-
-Verify final registration:
-
-```bash
-sinfo -N -o '%N %T %c %m %G'
-scontrol show node <worker-name>
-```
-
-If the node shows `NOT_RESPONDING`, compare the MUNGE-key checksum on controller and worker, and check the worker daemon:
-
-```bash
-sudo sha256sum /etc/munge/munge.key
-sudo systemctl is-active munge slurmd
-sudo journalctl -u slurmd -n 80 --no-pager
+sudo scontrol reconfigure
+sudo scontrol update NodeName=<worker-name> State=IDLE
+sinfo -N -o '%N %T %G'
 ```
 
 For NVIDIA GPUs, the worker needs the NVML Slurm plugin and this GRES configuration:
@@ -313,11 +298,9 @@ Example batch file:
 #SBATCH --job-name=gpu-test
 #SBATCH --partition=<partition>
 #SBATCH --account=<username>
-#SBATCH --nodes=1
-#SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=1G
-#SBATCH --gpus=1
+#SBATCH --gres=gpu:1
 #SBATCH --time=02:00:00
 #SBATCH --output=%x-%j.out
 #SBATCH --error=%x-%j.err
@@ -325,29 +308,6 @@ Example batch file:
 nvidia-smi
 python train.py
 ```
-
-To allocate both GPUs in a two-worker cluster where every worker has one GPU,
-request two nodes and two GPUs for the whole job. Do not use
-`--gres=gpu:2`, because that requests two GPUs from each allocated node.
-
-```bash
-#!/usr/bin/env bash
-#SBATCH --job-name=two-node-gpu-test
-#SBATCH --partition=cluster
-#SBATCH --account=<username>
-#SBATCH --nodes=2
-#SBATCH --ntasks=2
-#SBATCH --cpus-per-task=1
-#SBATCH --mem=1G
-#SBATCH --gpus=nvidia_geforce_rtx_3060:2
-#SBATCH --time=01:00:00
-
-srun nvidia-smi -L
-```
-
-For distributed AI training, the application must also use a multi-node
-launcher such as PyTorch `torchrun`; one ordinary Python process cannot use a
-GPU located on another worker as if it were local.
 
 `python train.py` is the real workload command. `sleep` is useful only for testing a running job or demonstrating Web UI visibility.
 
@@ -447,7 +407,7 @@ slurmd -G
 | User cannot enter `/shared/home/<user>` | Check NFS mount and run `sudo chmod 755 /shared /shared/home` on controller and clients |
 | User resolves on login but not worker | Configure/restart SSSD on worker and verify `getent passwd <user>` |
 | NFS mount fails | Check `sudo exportfs -v`, NFS allow-list, routing, and firewall rules |
-| Worker absent in `sinfo` | Run `add_slurm_worker_dynamic.sh` on controller; check identical MUNGE key, controller reachability/port 6817, Slurmd status, and node definition |
+| Worker absent in `sinfo` | Check MUNGE key, controller reachability, port 6817, Slurmd status, node definition |
 | GPU absent | Install NVML plugin, set `AutoDetect=nvml`, restart Slurmd |
 | Invalid account/partition | Add matching Slurm account, user, partition association, and QoS |
 | Requested node configuration unavailable | Requested CPU/RAM/GPU exceeds worker resources or QoS limit |
