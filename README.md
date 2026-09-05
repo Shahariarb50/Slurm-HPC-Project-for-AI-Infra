@@ -29,18 +29,19 @@ The login and worker nodes may be on different routed subnets. NFS exports must 
 
 | Script | Run on | Purpose |
 |---|---|---|
-| `setup-slurm-web-controller-dynamic.sh` | Controller | Fresh controller installation: Slurm, database, LDAP, and Web UI |
-| `setup_shared_home_controller_dynamic.sh` | Controller | Creates the NFS server and exports `/shared/home` |
-| `setup-login-node-dynamic.sh` | Login node | Installs Slurm client, MUNGE, and initial LDAP login setup |
-| `setup_ldap_identity_client_dynamic.sh` | Login and worker | Configures LDAP/SSSD identity resolution |
-| `setup_shared_home_login_dynamic.sh` | Login node | Mounts the NFS shared home persistently |
-| `setup-worker-node-gpu-dynamic.sh` | Worker | Configures Slurmd and NVIDIA GPU auto-detection |
-| `add_slurm_worker_dynamic.sh` | Controller | Safely registers or updates one worker and adds it to the partition |
-| `setup_shared_home_worker_dynamic.sh` | Worker | Mounts the NFS shared home persistently |
-| `create_ldap_slurm_user_dynamic.sh` | Controller | Creates LDAP user, Slurm account, QoS association, and private home |
-| `manage_ldap_slurm_users_groups_dynamic.sh` | Controller | Edits/deletes users and manages LDAP groups |
-| `submit_slurm_job_dynamic.sh` | Login node, as user | Generates and submits a Slurm batch job |
-| `slurm_superadmin_menu.sh` | Controller | Interactive job-cancel, reservation, and QoS menu |
+| [`setup-slurm-web-controller-dynamic.sh`](./setup-slurm-web-controller-dynamic.sh) | Controller | Fresh controller installation: Slurm, database, LDAP, and Web UI |
+| [`setup_shared_home_controller_dynamic.sh`](./setup_shared_home_controller_dynamic.sh) | Controller | Creates the NFS server and exports `/shared/home` |
+| [`setup-login-node-dynamic.sh`](./setup-login-node-dynamic.sh) | Login node | Installs Slurm client, MUNGE, and initial LDAP login setup |
+| [`setup_ldap_identity_client_dynamic.sh`](./setup_ldap_identity_client_dynamic.sh) | Login and worker | Configures LDAP/SSSD identity resolution |
+| [`setup_shared_home_login_dynamic.sh`](./setup_shared_home_login_dynamic.sh) | Login node | Mounts the NFS shared home persistently |
+| [`setup-worker-node-gpu-dynamic.sh`](./setup-worker-node-gpu-dynamic.sh) | Worker | Configures Slurmd and NVIDIA GPU auto-detection |
+| [`add_slurm_worker_dynamic.sh`](./add_slurm_worker_dynamic.sh) | Controller | Safely registers or updates one worker and adds it to the partition |
+| [`setup_shared_home_worker_dynamic.sh`](./setup_shared_home_worker_dynamic.sh) | Worker | Mounts the NFS shared home persistently |
+| [`create_ldap_slurm_user_dynamic.sh`](./create_ldap_slurm_user_dynamic.sh) | Controller | Creates LDAP user, Slurm account, QoS association, and private home |
+| [`manage_ldap_slurm_users_groups_dynamic.sh`](./manage_ldap_slurm_users_groups_dynamic.sh) | Controller | Edits/deletes users and manages LDAP groups |
+| [`submit_slurm_job_dynamic.sh`](./submit_slurm_job_dynamic.sh) | Login node, as user | Generates and submits a Slurm batch job |
+| [`slurm_superadmin_menu.sh`](./slurm_superadmin_menu.sh) | Controller | Interactive job-cancel, reservation, and QoS menu |
+| [`setup-worker-node-with-gpu-dynamic.sh`](./setup-worker-node-with-gpu-dynamic.sh) | Legacy | Older duplicate; do not use for a new setup |
 
 ## Before running scripts copied from Windows
 
@@ -59,22 +60,22 @@ This prevents the `bash\r: No such file or directory` error.
 
 Run the scripts in this order. Commands shown on the same node must be run in the listed sequence.
 
-| Step | Node | Command |
-|---:|---|---|
-| 1 | Controller | `sudo bash setup-slurm-web-controller-dynamic.sh` |
-| 2 | Controller | `sudo bash setup_shared_home_controller_dynamic.sh` |
-| 3 | Login node | `sudo bash setup-login-node-dynamic.sh` |
-| 4 | Login node | `sudo bash setup_ldap_identity_client_dynamic.sh` |
-| 5 | Login node | `sudo bash setup_shared_home_login_dynamic.sh` |
-| 6 | Worker 1 | Copy the controller MUNGE key to `/root/controller-munge.key` |
-| 7 | Worker 1 | `sudo bash setup-worker-node-gpu-dynamic.sh` |
-| 8 | Worker 1 | `sudo bash setup_ldap_identity_client_dynamic.sh` |
-| 9 | Worker 1 | `sudo bash setup_shared_home_worker_dynamic.sh` |
-| 10 | Controller | `sudo bash add_slurm_worker_dynamic.sh` and enter Worker 1 details |
-| 11 | Worker 2 | Repeat steps 6–9 with the Worker 2 hostname and IP |
-| 12 | Controller | Run `sudo bash add_slurm_worker_dynamic.sh` again and enter Worker 2 details |
-| 13 | Controller | `sudo bash create_ldap_slurm_user_dynamic.sh` for every required user |
-| 14 | Login node, as the LDAP user | `bash submit_slurm_job_dynamic.sh` |
+| Step | Node | Script | Command/action |
+|---:|---|---|---|
+| 1 | Controller | [`setup-slurm-web-controller-dynamic.sh`](./setup-slurm-web-controller-dynamic.sh) | `sudo bash setup-slurm-web-controller-dynamic.sh` |
+| 2 | Controller | [`setup_shared_home_controller_dynamic.sh`](./setup_shared_home_controller_dynamic.sh) | `sudo bash setup_shared_home_controller_dynamic.sh` |
+| 3 | Login node | [`setup-login-node-dynamic.sh`](./setup-login-node-dynamic.sh) | `sudo bash setup-login-node-dynamic.sh` |
+| 4 | Login node | [`setup_ldap_identity_client_dynamic.sh`](./setup_ldap_identity_client_dynamic.sh) | `sudo bash setup_ldap_identity_client_dynamic.sh` |
+| 5 | Login node | [`setup_shared_home_login_dynamic.sh`](./setup_shared_home_login_dynamic.sh) | `sudo bash setup_shared_home_login_dynamic.sh` |
+| 6 | Worker 1 | - | Copy the controller MUNGE key to `/root/controller-munge.key` |
+| 7 | Worker 1 | [`setup-worker-node-gpu-dynamic.sh`](./setup-worker-node-gpu-dynamic.sh) | `sudo bash setup-worker-node-gpu-dynamic.sh` |
+| 8 | Worker 1 | [`setup_ldap_identity_client_dynamic.sh`](./setup_ldap_identity_client_dynamic.sh) | `sudo bash setup_ldap_identity_client_dynamic.sh` |
+| 9 | Worker 1 | [`setup_shared_home_worker_dynamic.sh`](./setup_shared_home_worker_dynamic.sh) | `sudo bash setup_shared_home_worker_dynamic.sh` |
+| 10 | Controller | [`add_slurm_worker_dynamic.sh`](./add_slurm_worker_dynamic.sh) | Run with `sudo bash` and enter Worker 1 details |
+| 11 | Worker 2 | Steps 6-9 above | Repeat with the Worker 2 hostname and IP |
+| 12 | Controller | [`add_slurm_worker_dynamic.sh`](./add_slurm_worker_dynamic.sh) | Run again and enter Worker 2 details |
+| 13 | Controller | [`create_ldap_slurm_user_dynamic.sh`](./create_ldap_slurm_user_dynamic.sh) | Run once for every required user |
+| 14 | Login node, as the LDAP user | [`submit_slurm_job_dynamic.sh`](./submit_slurm_job_dynamic.sh) | `bash submit_slurm_job_dynamic.sh` |
 
 Run `setup-slurm-web-controller-dynamic.sh` only for a new or intentionally rebuilt controller. Do not rerun it on an operating cluster just to add a worker. The similarly named `setup-worker-node-with-gpu-dynamic.sh` is an older duplicate; use `setup-worker-node-gpu-dynamic.sh` in the sequence above.
 
