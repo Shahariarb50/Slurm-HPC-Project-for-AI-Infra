@@ -67,7 +67,7 @@ Run the scripts in this order. Commands shown on the same node must be run in th
 | 3 | Login node | [`setup-login-node-dynamic.sh`](./setup-login-node-dynamic.sh) | `sudo bash setup-login-node-dynamic.sh` |
 | 4 | Login node | [`setup_ldap_identity_client_dynamic.sh`](./setup_ldap_identity_client_dynamic.sh) | `sudo bash setup_ldap_identity_client_dynamic.sh` |
 | 5 | Login node | [`setup_shared_home_login_dynamic.sh`](./setup_shared_home_login_dynamic.sh) | `sudo bash setup_shared_home_login_dynamic.sh` |
-| 6 | Worker 1 | - | Copy the controller MUNGE key to `/root/controller-munge.key` |
+| 6 | Worker 1 | No script (manual prerequisite) | Securely copy the controller MUNGE key to `/root/controller-munge.key`, then set owner `root:root` and mode `0400` |
 | 7 | Worker 1 | [`setup-worker-node-gpu-dynamic.sh`](./setup-worker-node-gpu-dynamic.sh) | `sudo bash setup-worker-node-gpu-dynamic.sh` |
 | 8 | Worker 1 | [`setup_ldap_identity_client_dynamic.sh`](./setup_ldap_identity_client_dynamic.sh) | `sudo bash setup_ldap_identity_client_dynamic.sh` |
 | 9 | Worker 1 | [`setup_shared_home_worker_dynamic.sh`](./setup_shared_home_worker_dynamic.sh) | `sudo bash setup_shared_home_worker_dynamic.sh` |
