@@ -13,7 +13,8 @@ normalise() {
 
 share="$(ask 'Shared path' '/shared/home')"
 [[ "$share" == /* ]] || die 'Shared path must start with /.'
-clients_raw="$(ask 'Allowed client IPs/CIDRs (comma-separated)' '192.168.43.45,192.168.182.253')"
+clients_raw="$(ask 'Allowed client IPs/CIDRs (comma-separated; include every login/worker subnet)' '')"
+[[ -n "$clients_raw" ]] || die 'Enter every login/worker IP or subnet. Example: 10.0.10.0/24,10.0.20.0/24'
 IFS=', ' read -r -a clients <<<"$clients_raw"
 specs=()
 for c in "${clients[@]}"; do [[ -n "$c" ]] && specs+=("$(normalise "$c")"); done

@@ -26,6 +26,8 @@ This list explains the password prompts used by the Slurm setup scripts. Store p
 |  | `LDAP bind password` | LDAP administrator/bind password |
 |  | `Controller SSH and sudo password` | Controller Linux account password; only when automatic MUNGE-key copy is enabled |
 | `setup-worker-node-gpu-dynamic.sh` | Initial `sudo` prompt | Worker Linux sudo password |
+|  | `Local path of the controller MUNGE key` | This is **not a password**. Enter the file path where the controller's already-copied MUNGE key was placed, for example `/root/controller-munge.key`. |
+| `add_slurm_worker_dynamic.sh` | Initial `sudo` prompt | Controller Linux sudo password. It does not ask for a worker, LDAP, database, or MUNGE password. |
 | `setup_ldap_identity_client_dynamic.sh` | Initial `sudo` prompt | The local node's Linux sudo password |
 |  | `LDAP bind password` | LDAP administrator/bind password |
 | `setup_shared_home_controller_dynamic.sh` | Initial `sudo` prompt | Controller Linux sudo password |
@@ -43,6 +45,8 @@ This list explains the password prompts used by the Slurm setup scripts. Store p
 ## Important notes
 
 - `sudo` asks for the password of the currently logged-in Linux account, not the LDAP administrator password.
+- `add_slurm_worker_dynamic.sh` runs only on the controller. It updates Slurm configuration; it never transfers a MUNGE key or prompts for a worker password.
+- The worker setup script requires the controller MUNGE key to be copied securely before it starts. A MUNGE key is a secret file, not a password; never paste its contents into a chat, script, README, or command history.
 - The LDAP admin password is used by scripts that create, edit, delete, or look up LDAP identities.
 - A normal user should know only their own login password. They must never receive the LDAP admin password, MUNGE key, or database password.
 - Change default or reused passwords before production use, and keep controller SSH, LDAP admin, database, and user passwords separate.
