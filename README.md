@@ -226,7 +226,7 @@ Complete this before running scripts:
 | [`setup-login-node-dynamic.sh`](setup-login-node-dynamic.sh) | Login node | Installs Slurm client components, MUNGE, and initial LDAP login support |
 | [`setup_ldap_identity_client_dynamic.sh`](setup_ldap_identity_client_dynamic.sh) | Login and worker | Configures LDAP/SSSD identity resolution |
 | [`setup_shared_home_login_dynamic.sh`](setup_shared_home_login_dynamic.sh) | Login node | Mounts the shared home persistently |
-| [`setup-worker-node-gpu-dynamic.sh`](setup-worker-node-gpu-dynamic.sh) | Worker | Configures `slurmd` and NVIDIA GPU auto-detection |
+| [`setup-worker-node-gpu-dynamic.sh`](setup-worker-node-with-gpu-dynamic.sh) | Worker | Configures `slurmd` and NVIDIA GPU auto-detection |
 | [`setup_shared_home_worker_dynamic.sh`](setup_shared_home_worker_dynamic.sh) | Worker | Mounts the shared home persistently |
 | [`create_ldap_slurm_user_dynamic.sh`](create_ldap_slurm_user_dynamic.sh) | Controller | Creates an LDAP user, private home, Slurm account, association, and QoS membership |
 | [`manage_ldap_slurm_users_groups_dynamic.sh`](manage_ldap_slurm_users_groups_dynamic.sh) | Controller | Edits or deletes users and manages LDAP groups |
