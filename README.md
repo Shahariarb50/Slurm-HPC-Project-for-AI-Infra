@@ -313,9 +313,11 @@ Example batch file:
 #SBATCH --job-name=gpu-test
 #SBATCH --partition=<partition>
 #SBATCH --account=<username>
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=1G
-#SBATCH --gres=gpu:1
+#SBATCH --gpus=1
 #SBATCH --time=02:00:00
 #SBATCH --output=%x-%j.out
 #SBATCH --error=%x-%j.err
@@ -323,6 +325,29 @@ Example batch file:
 nvidia-smi
 python train.py
 ```
+
+To allocate both GPUs in a two-worker cluster where every worker has one GPU,
+request two nodes and two GPUs for the whole job. Do not use
+`--gres=gpu:2`, because that requests two GPUs from each allocated node.
+
+```bash
+#!/usr/bin/env bash
+#SBATCH --job-name=two-node-gpu-test
+#SBATCH --partition=cluster
+#SBATCH --account=<username>
+#SBATCH --nodes=2
+#SBATCH --ntasks=2
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=1G
+#SBATCH --gpus=nvidia_geforce_rtx_3060:2
+#SBATCH --time=01:00:00
+
+srun nvidia-smi -L
+```
+
+For distributed AI training, the application must also use a multi-node
+launcher such as PyTorch `torchrun`; one ordinary Python process cannot use a
+GPU located on another worker as if it were local.
 
 `python train.py` is the real workload command. `sleep` is useful only for testing a running job or demonstrating Web UI visibility.
 

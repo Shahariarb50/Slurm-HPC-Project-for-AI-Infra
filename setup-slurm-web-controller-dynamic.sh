@@ -124,6 +124,11 @@ sudo install -d -o slurm -g slurm -m 0755 /var/spool/slurmctld /var/log/slurm
 # ৪. slurm.conf
 # ===================================================
 print_info "Configuring slurm.conf..."
+if [ -f /etc/slurm/slurm.conf ]; then
+    SLURM_CONF_BACKUP="/etc/slurm/slurm.conf.bak.$(date +%Y%m%d%H%M%S)"
+    sudo cp -a /etc/slurm/slurm.conf "$SLURM_CONF_BACKUP"
+    print_info "Existing slurm.conf backed up to $SLURM_CONF_BACKUP"
+fi
 sudo tee /etc/slurm/slurm.conf > /dev/null <<EOF
 ClusterName=$CLUSTER_NAME
 SlurmctldHost=$HOST_NAME
@@ -166,6 +171,7 @@ StorageLoc=$DB_NAME
 EOF
 
 sudo chown slurm:slurm /etc/slurm/slurm.conf /etc/slurm/slurmdbd.conf
+sudo chmod 0644 /etc/slurm/slurm.conf
 sudo chmod 600 /etc/slurm/slurmdbd.conf
 
 # ===================================================
@@ -459,7 +465,7 @@ sudo chown slurm-web:slurm-web /etc/slurm-web/gateway.ini
 # ===================================================
 # ১৯. Add Node to Slurm
 # ===================================================
-print_info "Adding node to Slurm..."
+print_info "Adding the controller as the initial Slurm node..."
 # Slurm needs RealMemory in MiB.  If it is omitted, the controller can
 # register only the 1 MiB default, making ordinary --mem requests impossible.
 # Reserve 512 MiB for Ubuntu and Slurm itself, with a safe 256 MiB minimum.
@@ -477,6 +483,7 @@ sudo tee -a /etc/slurm/slurm.conf > /dev/null <<EOF
 NodeName=$HOST_NAME CPUs=$(nproc) RealMemory=$REAL_MEMORY_MB State=UNKNOWN
 PartitionName=$PARTITION_NAME Nodes=$HOST_NAME Default=YES MaxTime=INFINITE State=UP
 EOF
+print_info "Register each additional worker with add_slurm_worker_dynamic.sh; do not rerun this installer to add workers."
 
 # ===================================================
 # ২০. Final Restart

@@ -64,11 +64,18 @@ DebugFlags=NO_CONF_HASH
 NodeName=$node_name NodeAddr=$node_ip CPUs=$cpus RealMemory=$memory$node_gres State=UNKNOWN
 EOF
 
+# slurmd launches job steps as the submitting user.  Keep the shared Slurm
+# configuration readable so nested commands such as `srun --jobid=...` work.
+chown root:root /etc/slurm/slurm.conf
+chmod 0644 /etc/slurm/slurm.conf
+
 if (( has_gpu == 1 )) && [[ -n "$gpu_gres" ]]; then
   printf 'GresTypes=gpu\n' >> /etc/slurm/slurm.conf
   cat > /etc/slurm/gres.conf <<'EOF'
 AutoDetect=nvml
 EOF
+  chown root:root /etc/slurm/gres.conf
+  chmod 0644 /etc/slurm/gres.conf
 else
   rm -f /etc/slurm/gres.conf
 fi
